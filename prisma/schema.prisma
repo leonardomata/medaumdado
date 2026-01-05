@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plano {
+  Starter
+  Pro
+  Agencia
+}
+
+enum TipoOrigem {
+  google_sheets
+  excel_csv
+  texto_colado
+}
+
+enum StatusImportacao {
+  processando
+  sucesso
+  erro
+}
+
+enum Canal {
+  ADS
+  Organico
+  Social
+  CRM
+  Email
+  Personalizado
+}
+
+enum Ferramenta {
+  GoogleAds
+  MetaAds
+  GA4
+  SearchConsole
+  Instagram
+  TikTok
+  LinkedIn
+  Mailchimp
+  RDStation
+  Outro
+}
+
+enum Periodo {
+  dia
+  semana
+  mes
+}
+
+model Usuario {
+  id            String    @id @default(uuid())
+  nome          String
+  email         String    @unique
+  senhaHash     String
+  plano         Plano     @default(Starter)
+  criadoEm      DateTime  @default(now())
+
+  empresas      Empresa[]
+  importacoes   Importacao[]
+  mapeamentos   MapeamentoCampo[]
+  dadosMarketing DadosMarketing[]
+
+  @@map("usuarios")
+}
+
+model Empresa {
+  id            String    @id @default(uuid())
+  usuarioId     String
+  nomeEmpresa   String
+  segmento      String?
+  fusoHorario   String    @default("America/Sao_Paulo")
+  criadoEm      DateTime  @default(now())
+
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  importacoes   Importacao[]
+  mapeamentos   MapeamentoCampo[]
+  dadosMarketing DadosMarketing[]
+
+  @@map("empresas")
+}
+
+model Importacao {
+  id                String            @id @default(uuid())
+  usuarioId         String
+  empresaId         String
+  tipoOrigem        TipoOrigem
+  nomeOrigem        String
+  urlOrigem         String?
+  status            StatusImportacao  @default(processando)
+  linhasImportadas  Int               @default(0)
+  mensagemErro      String?
+  criadoEm          DateTime          @default(now())
+
+  usuario           Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa           Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  mapeamentos       MapeamentoCampo[]
+
+  @@map("importacoes")
+}
+
+model MapeamentoCampo {
+  id                    String      @id @default(uuid())
+  importacaoId          String
+  usuarioId             String
+  empresaId             String
+  nomeColunaOriginal    String
+  campoMapeado          String
+  criadoEm              DateTime    @default(now())
+
+  importacao            Importacao  @relation(fields: [importacaoId], references: [id], onDelete: Cascade)
+  usuario               Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa               Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@map("mapeamento_campos")
+}
+
+model DadosMarketing {
+  id                  String      @id @default(uuid())
+  usuarioId           String
+  empresaId           String
+  canal               Canal
+  ferramenta          Ferramenta
+  data                DateTime
+  periodo             Periodo     @default(dia)
+  campanha            String?
+  grupoAnuncio        String?
+  anuncio             String?
+  objetivo            String?
+  moeda               String      @default("BRL")
+
+  // Métricas (todas opcionais)
+  impressoes          Float?
+  alcance             Float?
+  cliques             Float?
+  ctr                 Float?
+  cpc                 Float?
+  cpm                 Float?
+  investimento        Float?
+  conversoes          Float?
+  custoPorConversao   Float?
+  receita             Float?
+  roas                Float?
+  leads               Float?
+  sessoes             Float?
+  usuarios            Float?
+  engajamento         Float?
+  seguidores          Float?
+  emailsEnviados      Float?
+  emailsAbertos       Float?
+  emailsClicados      Float?
+  oportunidades       Float?
+  vendas              Float?
+  ticketMedio         Float?
+
+  criadoEm            DateTime    @default(now())
+
+  usuario             Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa             Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, empresaId, data])
+  @@index([canal, ferramenta])
+  @@map("dados_marketing")
+}
